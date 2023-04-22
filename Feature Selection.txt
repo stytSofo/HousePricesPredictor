@@ -1,0 +1,38 @@
+Need Normalization:
+MSZoning
+LotShape
+Neighborhood
+Condition1
+BldgType
+HouseStyle
+YearBuilt (bimodal)
+YearRemodAdd (bimodal)
+Exterior1st (bimodal)
+MasVnrArea (skewd)
+ExterQual (skewd)
+BsmtUnfSF (skewd)
+rooft style (2 categories)
+
+removed:
+street (one category)
+alley (nulls)
+LandContour (one category)
+utilities (one category)
+LandSlope (one category)
+Condition1 (one category)
+Condition2 (one category)
+*BldgType (one category)
+RoofMatl(one category)
+ExterCond (one category)
+BsmtQual (one category)
+BsmtFinType2 (one category)
+Heating (one category)
+CentralAir (one category)
+Electrical (one category)
+Functional (one cateogory)
+GarageQual (one category)
+GarageCond (one category)
+PavedDrive (one category)
+MiscFeature (nullls)
+SaleType (one categoyr)
+SaleCondition (one category)

@@ -1,14 +1,14 @@
+# %%
+from matplotlib import pyplot as plt
 import pandas as pd
-from scipy import stats as sp
 from sklearn import ensemble
 import numpy as np
 from sklearn.linear_model import Lasso
 from sklearn.model_selection import train_test_split, cross_val_score, KFold
 from sklearn import linear_model
 import xgboost as xgb
-from sklearn.metrics import r2_score, mean_squared_error
+from sklearn.metrics import make_scorer, r2_score, mean_squared_error
 from sklearn.model_selection import GridSearchCV
-from sklearn.preprocessing import MinMaxScaler
 import warnings
 
 warnings.simplefilter("ignore")
@@ -28,6 +28,7 @@ def remove_correlated(df):
                 if colname in df.columns:
                     to_drop.append(colname)
     df.drop(to_drop, axis=1, inplace=True)
+    print(to_drop)
     return df
 
 # Top 14 columns from feature importance. After testings only 3
@@ -80,17 +81,12 @@ def preProcess(df):
     df = outliers(df)
     return df
 
-def transform(df:pd.DataFrame):
+def scale(df):
     return np.log1p(df)
-
-def scale(df:pd.DataFrame):
-    scaler = MinMaxScaler(feature_range=(0,1))
-    df[:] = scaler.fit_transform(df)
-    return df
 
 def run(alg,t_X,ids,x_t,y_t,x,y):
     result = np.expm1(alg.predict(t_X))
-    output = pd.DataFrame({'Id': ids, 'SalePrice': result})
+    output = pd.DataFrame({'Id': ids, 'SalePrice': np.floor(result)})
     alg_result = alg.predict(x_t)
     get_score(alg_result, y_t)
     scores = cross_val_score(alg, x, y, cv=kfolds)
@@ -102,16 +98,13 @@ def run(alg,t_X,ids,x_t,y_t,x,y):
 train = pd.read_csv('train.csv')
 test = pd.read_csv('test.csv')
 
-
 train = preProcess(train)
-train = transform(train) #Transform
-train = scale(train)
-print(train)
+
 ################################################
 ###############TESTING CODE#####################
 ################################################
 ##### TRAIN DATA #####
-# Y = train[['SalePrice']]
+train = scale(train) #Scale Data
 Y = pd.DataFrame(train["SalePrice"].values,columns=["SalePrice"])
 train.drop("SalePrice", axis=1, inplace=True)
 X = train
@@ -119,40 +112,66 @@ X = train
 test_id = test.Id
 test = pd.get_dummies(test)
 test = matchCols(train,test)
-test = transform(test) 
 test = scale(test) #Scale Test Data
 test_X = test
 
-x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.2, random_state=203)  # test = 20%, train = 80%
+# %%
+def mrse(y_true,y_pred):
+    return 1 - np.sqrt(mean_squared_error(y_true,y_pred))
+
+scorer = make_scorer(mrse,greater_is_better=True)
+
+from mlxtend.feature_selection import SequentialFeatureSelector as SFS
+from mlxtend.plotting import plot_sequential_feature_selection as plot_sfs
+
+rfr = ensemble.RandomForestRegressor()
+sfs_range = SFS(estimator=rfr,
+                k_features=(6,35),
+                forward=True,
+                floating=False,
+                scoring=scorer,
+                cv=0,n_jobs=8)
+
+sfs_range.fit(X,Y)
+Xsfs = sfs_range.transform(X)
+# print the accuracy of the best combination as well as the set of best features
+print('best combination (ACC: %.3f): %s\n' % (sfs_range.k_score_, sfs_range.k_feature_idx_))
+# %%
+plt.rcParams["figure.figsize"] = (6,6)
+# use the plot_sfs to visualize all accuracies
+plot_sfs(sfs_range.get_metric_dict(), kind='std_err')
+
+x_train, x_test, y_train, y_test = train_test_split(Xsfs, Y, test_size=0.2, random_state=203)  # test = 20%, train = 80%
 
 print("ElasticNet")
 elasticnet = linear_model.ElasticNetCV(
         alphas=[0.0001, 0.0005, 0.001, 0.0015, 0.01, 0.015, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1],
-        l1_ratio=[0.01, 0.1, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.99], max_iter=10000,n_jobs=-1).fit(x_train, y_train)
-output = run(elasticnet,test_X,test_id,x_test,y_test,X,Y)
+        l1_ratio=[0.01, 0.1, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.99], max_iter=100000,n_jobs=-1).fit(x_train, y_train)
+output = run(elasticnet,test_X,test_id,x_test,y_test,Xsfs,Y)
 print(output)
 output.to_csv('submission.csv',index=False)
 
-# print("\nXgBoost")
-# xg_reg = xgb.XGBRegressor(objective='reg:squarederror', eval_metric='logloss',subsample=0.95, colsample_bytree=0.3, learning_rate=0.04,
-#                           max_depth=3, alpha=0.1, n_estimators=1000)
-# xg_reg = xg_reg.fit(x_train, y_train)
-# output = run(xg_reg,test_X,test_id,x_test,y_test,X,Y)
-# print(output)
+print("\nXgBoost")
+xg_reg = xgb.XGBRegressor(objective='reg:squarederror', eval_metric='logloss',subsample=0.95, colsample_bytree=0.3, learning_rate=0.04,
+                          max_depth=3, alpha=0.1, n_estimators=1000)
+xg_reg = xg_reg.fit(x_train, y_train)
+output = run(xg_reg,test_X,test_id,x_test,y_test,Xsfs,Y)
+print(output)
 
-# print("\nLasso Regression")
-# lasso = Lasso(max_iter =  50000)
-# lasso_est = GridSearchCV(lasso, param_grid={"alpha": np.arange(0.0005, 0.001, 0.00001)})
-# lasso_est = lasso_est.fit(x_train,y_train)
-# output = run(lasso_est,test_X,test_id,x_test,y_test,X,Y)
-# print(output)
+print("\nLasso Regression")
+lasso = Lasso(max_iter =  50000)
+lasso_est = GridSearchCV(lasso, param_grid={"alpha": np.arange(0.0005, 0.001, 0.00001)})
+lasso_est = lasso_est.fit(x_train,y_train)
+output = run(lasso_est,test_X,test_id,x_test,y_test,Xsfs,Y)
+print(output)
 
-# print("\nGradientBoostingRegressor")
-# g_best = ensemble.GradientBoostingRegressor(n_estimators=5000, random_state=200,alpha=0.8 ,learning_rate=0.015, max_depth=3,
-#                                             max_features="sqrt", min_samples_leaf=15, min_samples_split=10,
-#                                             loss='huber',warm_start = True)
-# g_best = g_best.fit(x_train, y_train)
-# output = run(g_best,test_X,test_id,x_test,y_test,X,Y)
-# print(output)
-# output.to_csv('submission.csv',index=False)
+print("\nGradientBoostingRegressor")
+g_best = ensemble.GradientBoostingRegressor(n_estimators=5000, random_state=200,alpha=0.8 ,learning_rate=0.015, max_depth=3,
+                                            max_features="sqrt", min_samples_leaf=15, min_samples_split=10,
+                                            loss='huber',warm_start = True)
+g_best = g_best.fit(x_train, y_train)
+
+# %%
+output = run(g_best,test_X,test_id,x_test,y_test,Xsfs,Y)
+print(output)
 
