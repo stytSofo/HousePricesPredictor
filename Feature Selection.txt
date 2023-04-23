@@ -36,3 +36,12 @@ PavedDrive (one category)
 MiscFeature (nullls)
 SaleType (one categoyr)
 SaleCondition (one category)
+
+
+Miltos:
+	to drop: ['1stFlrSF', 'TotRmsAbvGrd', 'GarageArea']
+		'LotFrontage', 'Alley', 'FireplaceQu', 'PoolQC', 'Fence', 'MiscFeature'
+		"Id", "Street", "Utilities"
+				
+
+MSZoning	LotShape	Neighborhood	HouseStyle	RoofStyle	Exterior1st	ExterQual	Foundation	BsmtExposure	BsmtFinType1	HeatingQC	KitchenQua
