@@ -1,0 +1,36 @@
+Remove Nulls: Removed columns that had over 200? nulls
+
+--------------------------------------------------------------------------------------------------------------------------------------------
+REMOVED FOR HIGH COROLATION WITH SOMETHING ELSE
+
+Removed -> Left
+
+GarageCars-> garageArea
+Totrmsabvgrd-> GrLivArea
+1stFlrSf -> GrLivArea
+Exterior2nd -> Exterior1st
+GarageYrBlt -> YearBulit
+MSSubClass -> BldgType
+
+--------------------------------------------------------------------------------------------------------------------------------------------
+Removed:
+Street: no corolation wiht anything else, only 2 values (pavement gravel) and gaverl was only 5/1400
+LandSlope+LandContour: because low corolation  (if we are gonna keep one we keep LandContour bcause of higher variety )
+Utilities: all but 1 had AllPub
+Condition2: all but 15 were normal
+MasVnrType: We keept MasVnrArea in place of this
+LowQualFinSf: No corolation with anything	
+3SSMPorch: No corolation with anything	
+MoSold:  No corolation with anything	
+YrSold: No corolation with anything (only from 2006-2010)
+SaleTypr : No corolation with anything, but we split it into different collumns and we may keep (ConLW)
+
+--------------------------------------------------------------------------------------------------------------------------------------------
+Edit:
+
+Condition1: Make one collumn for each of its 9 attributes. We may need to drop theese collumns, low corolation
+
+
+
+
+
